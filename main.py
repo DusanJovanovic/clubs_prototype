@@ -1,5 +1,7 @@
 import club
+import country
 
-juventus = club.Club('Juventus', 'ITA')
+italia = country.Country('ITA')
+juventus = club.Club('Juventus', italia)
 
 print(juventus.name, juventus.country)

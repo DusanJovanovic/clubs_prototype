@@ -5,6 +5,7 @@ from collections import namedtuple
 import requests
 from bs4 import BeautifulSoup
 import json
+import itertools
 
 header = {'User-Agent': 'Mozilla/5.0'}
 Competition = namedtuple('Competition', 'code URL title pages')
@@ -43,11 +44,15 @@ def dates(tr, s):
 
 
 def home_team(tr):
-    return tr.find('td', {'class': 'team-a'}).text.strip()
+    td = tr.find('td', {'class': 'team-a'})
+    country = td.a['class'][-1].replace('_16_right', '').replace('-', ' ').title()
+    return td.text.strip() + ',' + country
 
 
 def away_team(tr):
-    return tr.find('td', {'class': 'team-b'}).text.strip()
+    td = tr.find('td', {'class': 'team-b'})
+    country = td.a['class'][-1].replace('_16_left', '').replace('-', ' ').title()
+    return td.text.strip() + ',' + country
 
 
 def score(tr):
@@ -85,20 +90,49 @@ def get_content(link):
     return BeautifulSoup(dct['commands'][0]['parameters']['content'], 'lxml')
 
 
-#f = open('tst.csv', 'wt', encoding='UTF-8')
-for tag in retreive_wrappers('https://int.soccerway.com/international/europe/uefa-cup/20162017/s12531/final-stages/'):
-    print(retreive_stage(tag))
-    s = 'date'
-    trs = retreive_tr(tag)
-    for tr in trs:
-        s = dates(tr, s)
-        print(s, home_team(tr), away_team(tr), score(tr))
-    print('#########################')
-#f.close()
-"""for tag in group_matches('https://int.soccerway.com/international/europe/uefa-cup/20162017/group-stage/r35527/', 'el'):
-    s = 'date'
-    trs = retreive_tr(tag)
-    for tr in trs:
-        s = dates(tr, s)
-        print(s, home_team(tr), away_team(tr), score(tr))
-    print('#########################')"""
+def tr_to_string(tr, s, season, stage):
+    s = dates(tr, s)
+    lst = [s, home_team(tr), away_team(tr), score(tr), stage, str(season)]
+    return (','.join(lst) + '\n', s)
+
+
+# https://int.soccerway.com/international/europe/uefa-cup/20162017/1st-qualifying-round/r35523/
+def link_to_string(link, season, abr):
+    s = '11/11/11'
+    if 'final-stages' in link:
+        strng = ''
+        for wrapper in retreive_wrappers(link):
+            stage = abr + '-' + retreive_stage(wrapper)
+            trs = retreive_tr(wrapper)
+            for tr in trs:
+                tup, s = tr_to_string(tr, s, season, stage)
+                strng += tup
+    elif 'group-stage' in link:
+        strng = ''
+        for wrapper in group_matches(link, abr):
+            stage = abr + '-group-stage'
+            trs = retreive_tr(wrapper)
+            for tr in trs:
+                tup, s = tr_to_string(tr, s, season, stage)
+                strng += tup
+    else:
+        strng = ''
+        for wrapper in retreive_wrappers(link):
+            stage = abr + '-' + link.split('/')[-3]
+            trs = retreive_tr(wrapper)
+            for tr in trs:
+                tup, s = tr_to_string(tr, s, season, stage)
+                strng += tup
+    return strng
+    
+
+f = open('results.csv', 'wt', encoding='UTF-8')
+f.write('Date,Home,H_Country,Away,A_Country,Score,Stage,Season\n')
+comb = itertools.product(range(2013, 2018), ['cl', 'el'])
+for el in comb:
+    print(el)
+    for link in retreive_links(el[0], el[1]):
+        print(link)
+        strng = link_to_string(link, el[0], el[1])
+        f.write(strng)
+f.close()
