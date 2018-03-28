@@ -61,10 +61,10 @@ def score(tr):
         result = result.replace('\n', '')
         span = tr.find('span', {'class': 'addition-visible'})
         if 'score-addition-left' in span['class']:
-            return result[:-1]
+            return result[:-1].split('-')
         else:
-            return result[1:]
-    return result
+            return result[1:].split('-')
+    return result.split('-')
 
 
 
@@ -92,7 +92,11 @@ def get_content(link):
 
 def tr_to_string(tr, s, season, stage):
     s = dates(tr, s)
-    lst = [s, home_team(tr), away_team(tr), score(tr), stage, str(season)]
+    try:
+        home_score, away_score = score(tr)
+    except ValueError:
+        home_score, away_score = 'CANC', 'CANC'
+    lst = [s, home_team(tr), home_score, away_team(tr), away_score, stage, str(season)]
     return (','.join(lst) + '\n', s)
 
 
@@ -127,7 +131,7 @@ def link_to_string(link, season, abr):
     
 
 f = open('results.csv', 'wt', encoding='UTF-8')
-f.write('Date,Home,H_Country,Away,A_Country,Score,Stage,Season\n')
+f.write('Date,Home,H_Country,H_Score,Away,A_Country,A_Score,Stage,Season\n')
 comb = itertools.product(range(2013, 2018), ['cl', 'el'])
 for el in comb:
     print(el)
